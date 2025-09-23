@@ -2,9 +2,12 @@
   "name": "converter-modelo",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
-    "dev": "ts-node src/server.ts"
+"scripts": {
+  "dev": "ts-node src/server.ts",
+  "build": "tsc",
+  "start": "node dist/server.js"
   },
+  
   "dependencies": {
     "express": "^5.1.0",
     "body-parser": "^2.2.0"
