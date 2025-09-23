@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Conversor C# → TS Mapper</title>
+  </head>
+  <body>
+    <h2>Converter Modelo C# para TypeScript Mapper</h2>
+    <form id="form">
+      <textarea
+        id="input"
+        rows="20"
+        cols="100"
+        placeholder="Cole aqui seu modelo C#"
+      ></textarea>
+      <br />
+      <button type="submit">Converter</button>
+    </form>
+    <div id="output"></div>
+
+    <script>
+      document.getElementById("form").onsubmit = async (e) => {
+        e.preventDefault();
+        const input = document.getElementById("input").value;
+        const res = await fetch("/convert", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: input,
+        });
+        document.getElementById("output").innerHTML = await res.text();
+      };
+    </script>
+  </body>
+</html>
