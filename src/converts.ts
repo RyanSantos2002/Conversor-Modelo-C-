@@ -1,22 +1,4 @@
-function mapType(csharpType: string): string {
-  switch (csharpType.replace("?", "")) {
-    case "int":
-    case "decimal":
-    case "double":
-      return "number";
-    case "bool":
-      return "boolean";
-    case "string":
-      return "string";
-    case "DateTime":
-      return "Date";
-    default:
-      return "any";
-  }
-}
-
 export function convertCSharpToMapper(csharpCode: string): string {
-  // pega nome da classe
   const classMatch = csharpCode.match(/class\s+(\w+)/);
   const className = classMatch
     ? classMatch[1].replace("Modelo", "")
@@ -25,8 +7,32 @@ export function convertCSharpToMapper(csharpCode: string): string {
   const propRegex = /(\[.*?\])?\s*public\s+([\w?<>]+)\s+(\w+)\s*\{.*?\}/g;
   const props = [...csharpCode.matchAll(propRegex)];
 
-  const fieldMapping: string[] = [];
-  const tsProps: string[] = [];
+  const select2Fields: string[] = [];
+  const normalFields: string[] = [];
+  const select2Props: string[] = [];
+  const normalProps: string[] = [];
+
+  // Helper function to map C# types to TypeScript types
+  function mapType(type: string): string {
+    switch (type.replace("?", "")) {
+      case "int":
+      case "long":
+      case "double":
+      case "float":
+      case "decimal":
+        return "number";
+      case "string":
+        return "string";
+      case "bool":
+        return "boolean";
+      case "DateTime":
+        return "Date";
+      case "Guid":
+        return "string";
+      default:
+        return "any";
+    }
+  }
 
   props.forEach(([fullMatch, attribute, type, name]) => {
     const lower = name.charAt(0).toLowerCase() + name.slice(1);
@@ -40,46 +46,46 @@ export function convertCSharpToMapper(csharpCode: string): string {
     const decoratorStr =
       decorators.length > 0 ? decorators.join("\n") + "\n" : "";
 
-    // select2: combina Id e Nome
+    // Campos select2
     if (name.endsWith("Id") || name.endsWith("Nome")) {
       const entity = lower.replace(/Id$|Nome$/, "");
-      if (!fieldMapping.some((f) => f.includes(entity))) {
-        fieldMapping.push(
+      if (!select2Fields.some((f) => f.includes(entity))) {
+        select2Fields.push(
           `    '${entity}.id': '${name.replace(/Id$|Nome$/, "")}Id',`
         );
-        fieldMapping.push(
+        select2Fields.push(
           `    '${entity}.name': '${name.replace(/Id$|Nome$/, "")}Nome',`
         );
-        tsProps.push(`${decoratorStr}  ${entity}?: select2;`);
+        select2Props.push(`${decoratorStr}  ${entity}?: select2;`);
       }
     } else {
-      fieldMapping.push(`    ${lower}: '${name}',`);
-      tsProps.push(`${decoratorStr}  ${lower}?: ${mapType(type)};`);
+      normalFields.push(`    ${lower}: '${name}',`);
+      normalProps.push(`${decoratorStr}  ${lower}?: ${mapType(type)};`);
     }
   });
 
-  return `
-const { Mapper } = require('@/common/core/models/base');
-const { AnyObject } = require('@/common/core/types/any-object');
-const { select2 } = require('@/common/core/types/select2');
-const { Required } = require('@/common/helpers/class-validator/required');
-const { MaxLength } = require('@/common/helpers/class-validator/max-length');
+  // Junta select2 primeiro e depois os demais
+  const fieldMapping = [...select2Fields, ...normalFields];
+  const tsProps = [...select2Props, ...normalProps];
 
-class ${className} extends Mapper {
+  return `
+import { Mapper } from '../base';
+import { AnyObject } from '../../types/any-object';
+import { select2 } from '../../types/select2';
+import { Required } from '@/common/helpers/class-validator/required';
+import { MaxLength } from '@/common/helpers/class-validator/max-length';
+
+export class ${className} extends Mapper {
   fieldMappingKeys = {
 ${fieldMapping.join("\n")}
   };
 
 ${tsProps.join("\n")}
 
-  constructor(json) {
+  constructor(json?: AnyObject) {
     super();
     this.map(json);
   }
 }
-
-module.exports = { convertCSharpToMapper };
 `;
 }
-
-module.exports = { convertCSharpToMapper };
