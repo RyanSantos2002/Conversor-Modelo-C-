@@ -3,7 +3,6 @@ import { convertCSharpToMapper } from "./converts";
 
 const app = express();
 
-// Suporta texto puro
 app.use(express.text());
 
 app.get("/", (req, res) => {
@@ -14,6 +13,7 @@ app.get("/", (req, res) => {
         <style>
           textarea { width: 100%; height: 200px; }
           pre { background: #f0f0f0; padding: 10px; white-space: pre-wrap; }
+          button { margin-top: 10px; padding: 6px 12px; cursor: pointer; }
         </style>
       </head>
       <body>
@@ -23,6 +23,7 @@ app.get("/", (req, res) => {
         <button onclick="convert()">Converter</button>
         <h2>Resultado TS:</h2>
         <pre id="resultado"></pre>
+        <button id="copyBtn" style="display:none;" onclick="copyCode()">Copiar Resultado</button>
 
         <script>
           async function convert() {
@@ -35,6 +36,16 @@ app.get("/", (req, res) => {
             });
             const text = await response.text();
             document.getElementById("resultado").innerText = text;
+            document.getElementById("copyBtn").style.display = "inline-block";
+          }
+
+          function copyCode() {
+            const text = document.getElementById("resultado").innerText;
+            navigator.clipboard.writeText(text).then(() => {
+              alert("Código copiado para a área de transferência!");
+            }).catch(err => {
+              alert("Erro ao copiar: " + err);
+            });
           }
         </script>
       </body>

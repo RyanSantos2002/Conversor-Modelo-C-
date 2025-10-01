@@ -4,7 +4,10 @@ export function convertCSharpToMapper(csharpCode: string): string {
     ? classMatch[1].replace("Modelo", "")
     : "MyModel";
 
-  const propRegex = /(\[.*?\])?\s*public\s+([\w?<>]+)\s+(\w+)\s*\{.*?\}/g;
+  // Regex mais flexível para propriedades
+  const propRegex =
+    /(\[.*?\])?\s*public\s+(?:override\s+)?(?:virtual\s+)?([\w?<>\[\]]+)\s+(\w+)\s*\{[^}]*\}/g;
+
   const props = [...csharpCode.matchAll(propRegex)];
 
   const select2Fields: string[] = [];
@@ -12,41 +15,55 @@ export function convertCSharpToMapper(csharpCode: string): string {
   const select2Props: string[] = [];
   const normalProps: string[] = [];
 
-  // Helper function to map C# types to TypeScript types
+  // Helper para mapear tipos C# → TS
   function mapType(type: string): string {
-    switch (type.replace("?", "")) {
+    const isNullable = type.includes("?");
+    const cleanType = type.replace("?", "");
+
+    let tsType: string;
+    switch (cleanType) {
       case "int":
       case "long":
       case "double":
       case "float":
       case "decimal":
-        return "number";
+        tsType = "number";
+        break;
       case "string":
-        return "string";
-      case "bool":
-        return "boolean";
-      case "DateTime":
-        return "Date";
       case "Guid":
-        return "string";
+        tsType = "string";
+        break;
+      case "bool":
+        tsType = "boolean";
+        break;
+      case "DateTime":
+        tsType = "Date";
+        break;
       default:
-        return "any";
+        tsType = "any";
+        break;
     }
+
+    return isNullable ? `${tsType} | null` : tsType;
   }
 
   props.forEach(([fullMatch, attribute, type, name]) => {
     const lower = name.charAt(0).toLowerCase() + name.slice(1);
     const decorators: string[] = [];
 
-    if (attribute?.includes("Obrigatorio = true"))
+    if (attribute?.includes("Obrigatorio = true")) {
       decorators.push("@Required()");
+    }
+
     const maxLengthMatch = attribute?.match(/CaracteresPermitidos\s*=\s*(\d+)/);
-    if (maxLengthMatch) decorators.push(`@MaxLength(${maxLengthMatch[1]})`);
+    if (maxLengthMatch) {
+      decorators.push(`@MaxLength(${maxLengthMatch[1]})`);
+    }
 
     const decoratorStr =
       decorators.length > 0 ? decorators.join("\n") + "\n" : "";
 
-    // Campos select2
+    // Campos select2 (Id/Nome)
     if (name.endsWith("Id") || name.endsWith("Nome")) {
       const entity = lower.replace(/Id$|Nome$/, "");
       if (!select2Fields.some((f) => f.includes(entity))) {
